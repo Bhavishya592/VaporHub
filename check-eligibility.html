@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>VaporHub – Review & Redeem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:#fff; color:#222; }
+    header { background:#fff; border-bottom:2px solid #eee; padding:15px; text-align:center; }
+    header img { max-width:180px; }
+    .wrap { max-width:700px; margin:30px auto; padding:20px; }
+    .card { background:#fafafa; border:1px solid #ddd; border-radius:8px; padding:24px; margin-bottom:24px; }
+    h1,h2 { text-align:center; color:#e94e1b; margin-bottom:16px; }
+    label { display:block; margin:12px 0 6px; font-weight:600; }
+    input { width:100%; padding:12px; border-radius:6px; border:1px solid #ccc; background:#fff; color:#222; }
+    input:focus { border-color:#e94e1b; outline:none; }
+    button { margin-top:18px; width:100%; padding:14px; border-radius:6px; border:none; background:#e94e1b; color:#fff; font-weight:bold; cursor:pointer; font-size:16px; transition:0.2s ease; }
+    button:hover { background:#d53f0f; }
+    .ok{color:#28a745;} .err{color:#dc3545;}
+    #coupon-box{ background:#fff8f6; border:2px dashed #e94e1b; padding:14px; margin-top:16px; text-align:center; font-weight:bold; font-size:20px; border-radius:6px; color:#e94e1b; display:none; }
+    #copy-btn{ margin-top:12px; padding:10px 16px; font-size:14px; background:#333; border:none; border-radius:6px; color:#fff; cursor:pointer; display:none; }
+    .trust-btn{ display:inline-block; margin-top:12px; padding:12px 18px; background:#00b67a; color:#fff; border-radius:6px; text-decoration:none; font-weight:bold; }
+    footer{ margin-top:40px; text-align:center; font-size:14px; color:#555; padding:20px; border-top:1px solid #eee; }
+    footer a{ color:#e94e1b; text-decoration:none; }
+    input:invalid, input.error { border-color: red !important; box-shadow: 0 0 4px rgba(255, 0, 0, 0.5); }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://vaporhub.co.uk/cdn/shop/files/Untitled_design_2.png?v=1745570722&width=500" alt="VaporHub Logo" />
+  </header>
+
+  <div class="wrap">
+    <!-- Step 1: Eligibility -->
+    <div class="card">
+      <h1>Check Your Eligibility</h1>
+      <form id="eligibility-form">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="you@example.com" required />
+        <button type="submit">Check</button>
+      </form>
+      <div id="elig-status"></div>
+      <div id="last-updated">Please enter your email to check eligibility.</div>
+    </div>
+
+    <!-- Step 2: Redeem -->
+    <div class="card">
+      <h2>Redeem Your Coupon</h2>
+      <div id="trustpilot-fields" style="display:none;">
+        <p>
+          Leave us a review on Trustpilot to unlock your coupon:
+          <br />
+          <a href="https://uk.trustpilot.com/review/vaporhub.co.uk" target="_blank" class="trust-btn">
+            ⭐ Write a Trustpilot Review
+          </a>
+        </p>
+        <label>Paste Your Trustpilot Review Link to Unlock Your Exclusive Discount 🎁</label>
+        <input id="review-link" type="url" placeholder="https://www.trustpilot.com/submitted/review?correlationid=…" />
+      </div>
+
+      <button id="btn-redeem" disabled>Redeem Now</button>
+      <div id="coupon-box"></div>
+      <button id="copy-btn">Copy Coupon</button>
+      <div id="redeem-status"></div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 VaporHub UK | <a href="https://vaporhub.co.uk">Back to Store</a>
+  </footer>
+
+<script>
+    let eligible = false;
+    let redeemed = false;
+    const trustpilotRegex = /^https:\/\/www\.trustpilot\.com\/submitted\/review\?correlationid=[0-9a-fA-F-]{36}$/;
+
+    // Step 1: Check eligibility
+    document.getElementById("eligibility-form").addEventListener("submit", e=>{
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const status = document.getElementById("elig-status");
+
+      if(!email){
+        status.textContent="❌ Please enter your email";
+        status.className="err";
+        eligible=false;
+        return;
+      }
+
+      status.textContent = "✅ Eligible! Please leave a Trustpilot review to continue.";
+      status.className = "ok";
+      eligible = true;
+      document.getElementById("btn-redeem").disabled = false;
+      document.getElementById("trustpilot-fields").style.display = "block";
+    });
+
+    // Step 2: Redeem
+    document.getElementById("btn-redeem").addEventListener("click", async ()=>{
+      if(!eligible || redeemed){ return; }
+
+      const emailInput = document.getElementById("email");
+      const email = emailInput.value.trim();
+      const reviewLink = document.getElementById("review-link").value.trim();
+
+      // Reset border
+      emailInput.style.borderColor = "#ccc";
+
+      if(!email){
+        emailInput.style.borderColor = "red";
+        document.getElementById("redeem-status").textContent = "❌ Please fill in your email.";
+        document.getElementById("redeem-status").className = "err";
+        return;
+      }
+
+      if(!reviewLink){
+        document.getElementById("redeem-status").textContent = "❌ Trustpilot link is required.";
+        document.getElementById("redeem-status").className = "err";
+        return;
+      }
+
+      if(!trustpilotRegex.test(reviewLink)){
+        document.getElementById("redeem-status").textContent = "❌ Invalid Trustpilot link.";
+        document.getElementById("redeem-status").className = "err";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("reviewLink", reviewLink);
+
+      const res = await fetch("/redeem", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if(data.coupon){
+        document.getElementById("coupon-box").style.display = "block";
+        document.getElementById("coupon-box").textContent = data.coupon;
+        document.getElementById("copy-btn").style.display = "inline-block";
+        document.getElementById("redeem-status").textContent = "✅ Coupon generated!";
+        document.getElementById("redeem-status").className = "ok";
+        redeemed = true;
+        document.getElementById("btn-redeem").disabled = true;
+      } else {
+        document.getElementById("redeem-status").textContent = "❌ " + (data.error || "No coupons left");
+        document.getElementById("redeem-status").className = "err";
+      }
+    });
+
+    // Copy coupon
+    document.getElementById("copy-btn").addEventListener("click", ()=>{
+      const code = document.getElementById("coupon-box").textContent.trim();
+      navigator.clipboard.writeText(code).then(()=>{
+        document.getElementById("redeem-status").textContent = "📋 Coupon copied!";
+        document.getElementById("redeem-status").className = "ok";
+      });
+    });
+</script>
+</body>
+</html>
